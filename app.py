@@ -185,8 +185,7 @@ st.header("4. Facility Specifications and Requirements")
 exp_life = int_input("Expected facility operational life (years)", placeholder="e.g., 5")
 life_score = min((exp_life or 0), 5) / 5.0
 
-req_area = int_input("Forecasted minimum facility area required (sq.ft)", placeholder="e.g., 100000")
-area_score = 1.0 if (req_area is not None and req_area >= 100000) else 0.0
+req_area = int_input("Forecasted minimum facility area required (sq.ft) (info)", placeholder="e.g., 100000")
 
 clear_height = float_input("Clear height required (ft)", placeholder="e.g., 30.0")
 height_score = 1.0 if (clear_height is not None and clear_height >= 30.0) else 0.0
@@ -228,7 +227,7 @@ side_score = 1.0 if (side_clearance is not None and side_clearance >= 10.0) else
 tail_score = 1.0 if st.checkbox("Trucks can tail-mate at 90° angle at docks") else 0.0
 dual_score = 1.0 if st.checkbox("Dual-sided (opposite) dock operations possible") else 0.0
 # Apron clearance informational only (no score)
-apron_clearance = float_input("Apron clearance distance for HCVs (ft) greater than 70 ft (info)", placeholder="e.g., 70.0")
+apron_clearance = float_input("No. of Aprons having clearance distance for HCVs (ft) greater than 70 ft (info)", placeholder="e.g., 5.0")
 hcv_slots = int_input("Dedicated HCV parking slots", placeholder="e.g., 6")
 hcv_score = 1.0 if (hcv_slots is not None and hcv_slots >= 6) else 0.0
 mcv_slots = int_input("Dedicated MCV/LCV parking slots", placeholder="e.g., 10")
@@ -249,7 +248,7 @@ plinth_height = float_input("Plinth height (ft) (info)", placeholder="e.g., 4.0"
 plinth_uniform = st.checkbox("Is plinth height same across all docks? (info)")
 
 spec_scores = [
-    life_score, area_score, height_score, skylight_score, vent_score,
+    life_score, height_score, skylight_score, vent_score,
     pillar_score, pillarL_score, floor_score, docks_score, enclosed_score,
     dockh_score, leveller_score, canopy_score, clear_score, side_score,
     tail_score, dual_score, hcv_score, mcv_score,
@@ -379,6 +378,8 @@ if submit_clicked:
         errors.append("Latitude is required and must be a number.")
     if lon_value is None:
         errors.append("Longitude is required and must be a number.")
+    if req_area is None:
+        errors.append("Forecasted minimum facility area is required.")
 
     if errors:
         for e in errors:
