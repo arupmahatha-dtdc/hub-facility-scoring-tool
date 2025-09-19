@@ -70,7 +70,7 @@ init_db()
 # --- Submission Inputs ---
 st.header("Submit Facility Proposal")
 facility_code = st.text_input("Facility Code", max_chars=64)
-employee_id = st.text_input("Employee ID", max_chars=64)
+employee_id = st.text_input("Submitter ID or Name", max_chars=64)
 col1, col2 = st.columns(2)
 with col1:
     latitude_input = st.text_input("Latitude", placeholder="e.g., 28.6139")
@@ -139,8 +139,15 @@ if any(o in ops for o in ["Surface Express", "Surface LTL", "Unified Operations"
 else:
     highway_score = 0.0
 
+# Cost inputs: proposed vs budget; score based on budget/proposed ratio (capped 1.0)
+budget_cost_sft = float_input("Budgeted rental cost per sq.ft (in local currency)", placeholder="e.g., 45.0")
 cost_sft = float_input("Proposed rental cost per sq.ft (in local currency)", placeholder="e.g., 50.0")
-cost_score = 1.0 if (cost_sft is not None and cost_sft <= 100.0) else 0.0
+if (budget_cost_sft is not None) and (cost_sft is not None) and cost_sft > 0:
+    cost_ratio = budget_cost_sft / cost_sft
+    cost_score = max(0.0, min(cost_ratio, 1.0))
+else:
+    cost_ratio = None
+    cost_score = 0.0
 
 op_weights = (
     (1.0 if "Air Operation" in ops else 0.0) +
@@ -194,6 +201,9 @@ floor_load = float_input("Floor load capacity (tons/sq.m)", placeholder="e.g., 6
 floor_score = 1.0 if (floor_load is not None and floor_load >= 5.0) else 0.0
 
 docks = int_input("Number of dock doors", placeholder="e.g., 0")
+# Informational dock counts (no scoring)
+docks_over_50ft = int_input("Number of docks for vehicles >= 50 ft (info)", placeholder="e.g., 4")
+docks_32ft = int_input("Number of docks for >= 32 ft vehicles (info)", placeholder="e.g., 6")
 if req_area and req_area > 0:
     recommended_docks = req_area / 2500.0
     if docks is None:
@@ -217,8 +227,8 @@ side_clearance = float_input("Side clearance from dock doors (ft)", placeholder=
 side_score = 1.0 if (side_clearance is not None and side_clearance >= 10.0) else 0.0
 tail_score = 1.0 if st.checkbox("Trucks can tail-mate at 90° angle at docks") else 0.0
 dual_score = 1.0 if st.checkbox("Dual-sided (opposite) dock operations possible") else 0.0
-apron_clearance = float_input("Apron clearance distance for HCVs (ft)", placeholder="e.g., 70.0")
-apron_score = 1.0 if (apron_clearance is not None and apron_clearance >= 70.0) else 0.0
+# Apron clearance informational only (no score)
+apron_clearance = float_input("Apron clearance distance for HCVs (ft) greater than 70 ft (info)", placeholder="e.g., 70.0")
 hcv_slots = int_input("Dedicated HCV parking slots", placeholder="e.g., 6")
 hcv_score = 1.0 if (hcv_slots is not None and hcv_slots >= 6) else 0.0
 mcv_slots = int_input("Dedicated MCV/LCV parking slots", placeholder="e.g., 10")
@@ -234,11 +244,15 @@ driver_score = 1.0 if st.checkbox("Dedicated driver rest area with basic facilit
 beds = int_input("Driver rest room bed capacity", placeholder="e.g., 5")
 beds_score = 1.0 if (beds is not None and beds >= 5) else 0.0
 
+# Plinth details (informational)
+plinth_height = float_input("Plinth height (ft) (info)", placeholder="e.g., 4.0")
+plinth_uniform = st.checkbox("Is plinth height same across all docks? (info)")
+
 spec_scores = [
     life_score, area_score, height_score, skylight_score, vent_score,
     pillar_score, pillarL_score, floor_score, docks_score, enclosed_score,
     dockh_score, leveller_score, canopy_score, clear_score, side_score,
-    tail_score, dual_score, apron_score, hcv_score, mcv_score,
+    tail_score, dual_score, hcv_score, mcv_score,
     parking_score, fire_score, office_score, fiber_score, driver_score, beds_score
 ]
 facility_score = (sum(spec_scores) / len(spec_scores)) * 35
@@ -302,7 +316,9 @@ if submit_clicked:
             "hubs_radius": hubs_radius,
             "airport_dist": 'airport_dist' in locals() and airport_dist or None,
             "highway_dist": 'highway_dist' in locals() and highway_dist or None,
-            "cost_sft": cost_sft,
+            "budget_cost_sft": budget_cost_sft,
+            "proposed_cost_sft": cost_sft,
+            "cost_ratio_budget_to_proposed": cost_ratio,
             "ops_score": ops_score,
         },
         "location_strategy": {
@@ -326,6 +342,8 @@ if submit_clicked:
             "pillar_length": pillar_length,
             "floor_load": floor_load,
             "docks": docks,
+            "docks_over_50ft_info": docks_over_50ft,
+            "docks_32ft_info": docks_32ft,
             "recommended_docks": (req_area / 2500.0) if (req_area is not None and req_area > 0) else None,
             "enclosed_pct": enclosed_pct,
             "dock_height": dock_height,
@@ -335,7 +353,7 @@ if submit_clicked:
             "side_clearance": side_clearance,
             "tail_mate": bool('tail_score' in locals() and tail_score),
             "dual_sided": bool('dual_score' in locals() and dual_score),
-            "apron_clearance": apron_clearance,
+            "apron_clearance_info": apron_clearance,
             "hcv_slots": hcv_slots,
             "mcv_slots": mcv_slots,
             "car_slots": car_slots,
@@ -345,6 +363,8 @@ if submit_clicked:
             "fiber_ready": bool('fiber_score' in locals() and fiber_score),
             "driver_area": bool('driver_score' in locals() and driver_score),
             "beds": beds,
+            "plinth_height_info": plinth_height,
+            "plinth_uniform_info": plinth_uniform,
             "facility_score": facility_score,
         },
         "totals": {"total_score": total_score},
